@@ -2,8 +2,16 @@ PROJECT = usartTest
 BUILD_DIR = bin
 
 SHARED_DIR = ../my-common-code
+SHARED_DIR += ../my-common-code/freertos/include
+SHARED_DIR += ../my-common-code/freertos/portable/GCC/ARM_CM4F
+
+#INCLUDES += $(patsubst %,-I%, . ../my-common-code/freertos/include)
+
 CFILES = my-project.c
 CFILES += api.c
+CFILES += freertos/tasks.c
+CFILES += freertos/queue.c
+CFILES += freertos/list.c
 AFILES += api-asm.S
 
 # TODO - you will need to edit these two lines!
@@ -13,6 +21,7 @@ OOCD_FILE = board/st_nucleo_f4.cfg
 # You shouldn't have to edit anything below here.
 VPATH += $(SHARED_DIR)
 INCLUDES += $(patsubst %,-I%, . $(SHARED_DIR))
+$(info $$var is [${INCLUDES}])
 OPENCM3_DIR=../libopencm3
 
 include $(OPENCM3_DIR)/mk/genlink-config.mk
