@@ -41,17 +41,11 @@ static void gpio_setup(void)
 static void testTask(void *args)
 {
 	const TickType_t delay = pdMS_TO_TICKS(250);
-	gpio_toggle(GPIOB, GPIO0);
-	vTaskDelay(delay);
-}
-
-void vApplicationMallocFailedHook( void ) {
-    printf(“malloc failed ———————————————–\r\n”);
-}
-
-void vApplicationStackOverflowHook( TaskHandlet xTask, signed char *pcTaskName )
-{
-    printf(“stack overflow in task id %lu, name: %s ——————————————\r\n”, (uint32t)xTask, pcTaskName);
+	while(1)
+	{
+			gpio_toggle(GPIOB, GPIO0);
+			vTaskDelay(delay);
+	}
 }
 
 int main(void) 
