@@ -3,12 +3,20 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
+#include "FreeRTOS.h"
+#include "task.h"
+#include "printf.h"
+
+void _putchar(char character)
+{
+	usart_send_blocking(USART3, character);
+}
 
 static void clock_setup(void)
 {
-	//rcc_periph_clock_enable(RCC_GPIOD);
+	rcc_periph_clock_enable(RCC_GPIOD);
 	rcc_periph_clock_enable(RCC_GPIOB);
-	//rcc_periph_clock_enable(RCC_USART3);
+	rcc_periph_clock_enable(RCC_USART3);
 }
 
 static void usart_setup(void)
@@ -26,24 +34,39 @@ static void usart_setup(void)
 static void gpio_setup(void)
 {
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
-	//gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
-	//gpio_set_af(GPIOD, GPIO_AF7, GPIO9);
+	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8);
+	gpio_set_af(GPIOD, GPIO_AF7, GPIO8);
+}
+
+static void testTask(void *args)
+{
+	const TickType_t delay = pdMS_TO_TICKS(250);
+	gpio_toggle(GPIOB, GPIO0);
+	vTaskDelay(delay);
+}
+
+void vApplicationMallocFailedHook( void ) {
+    printf(“malloc failed ———————————————–\r\n”);
+}
+
+void vApplicationStackOverflowHook( TaskHandlet xTask, signed char *pcTaskName )
+{
+    printf(“stack overflow in task id %lu, name: %s ——————————————\r\n”, (uint32t)xTask, pcTaskName);
 }
 
 int main(void) 
 {
+	uint32_t rc = 0;
 	clock_setup();
-	//usart_setup();
 	gpio_setup();
+	usart_setup();
+	printf("Hardware setup complete\r\n");
+	rc = xTaskCreate(testTask, "testTask", 100, NULL, configMAX_PRIORITIES-1, NULL);
+	printf("Task creation code: %d\r\n", rc);
+	gpio_toggle(GPIOB, GPIO0);
+	vTaskStartScheduler();
+	gpio_toggle(GPIOB, GPIO0);
 	
-	while(1)
-	{
-		gpio_toggle(GPIOB, GPIO0);
-		for(volatile int i = 0; i < 5000000; i++)
-		{
-			__asm__("NOP");
-		}
-	}
 
 	/* add your own code */
 	uint32_t rev = 0xaabbccdd;
