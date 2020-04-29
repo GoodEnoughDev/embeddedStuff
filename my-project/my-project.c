@@ -79,18 +79,19 @@ void testTask(void)
 
 void heap_monitor_task()
 {
+    printf("Started heap monitor task");
     uint32_t current_heap_size;
     const TickType_t delay = pdMS_TO_TICKS(100);
 
     while(1)
     {
-        printf("Started heap monitor task");
         current_heap_size = xPortGetFreeHeapSize();
-        vTaskDelay(delay);
         if(current_heap_size > configMAX_HEAP_SIZE)
         {
             printf("Current heap size: %d near max: %d", current_heap_size, configMAX_HEAP_SIZE)
         }
+
+        vTaskDelay(delay);
     {
 }
 
