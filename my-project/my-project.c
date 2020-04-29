@@ -16,6 +16,8 @@
 char command_buffer[COMMAND_BUFFER_LEN];
 xQueueHandle command_queue;
 
+void testTask(void);
+
 void _putchar(char character)
 {
 	usart_send_blocking(USART3, character);
@@ -23,41 +25,54 @@ void _putchar(char character)
 
 static void clock_setup(void)
 {
+	// Setup system clock
 	rcc_clock_setup_pll(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
-	rcc_periph_clock_enable(RCC_GPIOD);
-	rcc_periph_clock_enable(RCC_GPIOB);
+
+	// Setup USART peripheral clocks
 	rcc_periph_clock_enable(RCC_USART3);
+	rcc_periph_clock_enable(RCC_GPIOD);
+
+	// Setup LED GPIO clock	
+	rcc_periph_clock_enable(RCC_GPIOB);
 }
 
 static void usart_setup(void)
 {
+	// Setup interrupts
 	nvic_enable_irq(NVIC_USART3_IRQ);
+
+	// Setup USART
 	usart_set_baudrate(USART3, 115200);
 	usart_set_databits(USART3, 8);
 	usart_set_stopbits(USART3, USART_STOPBITS_1);
-	usart_set_mode(USART3, USART_MODE_TX);
+	usart_set_mode(USART3, USART_MODE_TX_RX);
 	usart_set_parity(USART3, USART_PARITY_NONE);
 	usart_set_flow_control(USART3, USART_FLOWCONTROL_NONE);
+	usart_enable_rx_interrupt(USART3);
 	usart_enable(USART3);
 	printf("\r\n");
 }
 
 static void gpio_setup(void)
 {
+	// Setup LED GPIO
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
+
+	// Setup USART pin modes
 	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8);
 	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
+	gpio_set_output_options(GPIOD, GPIO_OTYPE_OD, GPIO_OSPEED_25MHZ, GPIO9);
 	gpio_set_af(GPIOD, GPIO_AF7, GPIO8);
 	gpio_set_af(GPIOD, GPIO_AF7, GPIO9);
 }
 
-void testTask(void *args)
+void testTask(void)
 {
 	printf("Starting testTask");
 	const TickType_t delay = pdMS_TO_TICKS(25);
 	while(1)
 	{
-			gpio_toggle(GPIOB, GPIO0);
+			//gpio_toggle(GPIOB, GPIO0);
 			vTaskDelay(delay);
 	}
 }
@@ -84,7 +99,19 @@ int main(void)
 	return 0;
 }
 
-usart3_isr(void)
+void usart3_isr(void)
 {
+		static uint8_t data = 'A';
 
+	/* Check if we were called because of RXNE. */
+	if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
+	    ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
+
+		/* Indicate that we got data. */
+		gpio_toggle(GPIOB, GPIO0);
+
+		/* Retrieve the data from the peripheral. */
+		data = usart_recv(USART3);
+		printf("%d\r\n", data);
+	}
 }
