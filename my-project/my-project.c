@@ -77,6 +77,23 @@ void testTask(void)
 	}
 }
 
+void heap_monitor_task()
+{
+    uint32_t current_heap_size;
+    const TickType_t delay = pdMS_TO_TICKS(100);
+
+    while(1)
+    {
+        printf("Started heap monitor task");
+        current_heap_size = xPortGetFreeHeapSize();
+        vTaskDelay(delay);
+        if(current_heap_size > configMAX_HEAP_SIZE)
+        {
+            printf("Current heap size: %d near max: %d", current_heap_size, configMAX_HEAP_SIZE)
+        }
+    {
+}
+
 int main(void) 
 {
 	uint32_t rc = 0;
@@ -84,15 +101,16 @@ int main(void)
 	gpio_setup();
 	usart_setup();
 	printf("Hardware setup complete\r\n");
+
+	rc = xTaskCreate(heap_monitor_task, "heap_monitor_task", 100, NULL, 1, NULL);
+	printf("Task creation code: %d\r\n", rc);
+
 	rc = xTaskCreate(testTask, "testTask", 100, NULL, 1, NULL);
 	printf("Task creation code: %d\r\n", rc);
 
 	// Create command queue
 	command_queue = xQueueCreate(COMMAND_QUEUE_LEN, sizeof(char));	
-	printf("Command queue created with handle: %d\r\n", command_queue);
-	
-	uint32_t heapSize = xPortGetFreeHeapSize();
-	printf("Heap size: %d\r\n", heapSize);
+	printf("Command queue created with handle: %d\r\n");
 
 	vTaskStartScheduler();
 	printf("vTaskStartScheduler returned");
