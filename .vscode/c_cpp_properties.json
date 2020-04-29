@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/my-common-code/FreeRTOS/include",
+                "${workspaceFolder}/my-common-code/FreeRTOS/portable/GCC/ARM_CM4F",
+                "${workspaceFolder}/libopencm3/include/libopencm3/stm32",
+                "${workspaceFolder}/libopencm3/include/libopencm3/stm32/f4/**"
+                
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
