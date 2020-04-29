@@ -17,6 +17,7 @@ char command_buffer[COMMAND_BUFFER_LEN];
 xQueueHandle command_queue;
 
 void testTask(void);
+void heap_monitor_task(void);
 
 void _putchar(char character)
 {
@@ -77,7 +78,7 @@ void testTask(void)
 	}
 }
 
-void heap_monitor_task()
+void heap_monitor_task(void)
 {
     printf("Started heap monitor task");
     uint32_t current_heap_size;
