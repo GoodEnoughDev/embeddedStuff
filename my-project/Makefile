@@ -2,17 +2,18 @@ PROJECT = usartTest
 BUILD_DIR = bin
 
 SHARED_DIR = ../my-common-code
-SHARED_DIR += ../my-common-code/freertos/include
-SHARED_DIR += ../my-common-code/freertos/portable/GCC/ARM_CM4F
+SHARED_DIR += ../my-common-code/FreeRTOS/include
+SHARED_DIR += ../my-common-code/FreeRTOS/portable/GCC/ARM_CM4F
 
 CFILES = my-project.c
 CFILES += api.c
 CFILES += printf.c
-CFILES += freertos/tasks.c
-CFILES += freertos/queue.c
-CFILES += freertos/list.c
+CFILES += FreeRTOS/list.c
+CFILES += FreeRTOS/queue.c
+CFILES += FreeRTOS/tasks.c
+CFILES += FreeRTOS/portable/MemMang/heap_2.c
 CFILES += port.c
-CFILES += freertos/portable/MemMang/heap_2.c
+CFILES += FreeRTOS/opencm3.c
 AFILES += api-asm.S
 
 # TODO - you will need to edit these two lines!

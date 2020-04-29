@@ -31,6 +31,11 @@ static void usart_setup(void)
 	usart_enable(USART3);
 }
 
+void vApplicationTickHook( void )
+{
+	//printf("tick");
+}
+
 static void gpio_setup(void)
 {
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
@@ -38,8 +43,9 @@ static void gpio_setup(void)
 	gpio_set_af(GPIOD, GPIO_AF7, GPIO8);
 }
 
-static void testTask(void *args)
+void testTask(void *args)
 {
+	printf("Starting testTask");
 	const TickType_t delay = pdMS_TO_TICKS(250);
 	while(1)
 	{
@@ -55,15 +61,13 @@ int main(void)
 	gpio_setup();
 	usart_setup();
 	printf("Hardware setup complete\r\n");
-	rc = xTaskCreate(testTask, "testTask", 100, NULL, configMAX_PRIORITIES-1, NULL);
+	rc = xTaskCreate(testTask, "testTask", 1000, NULL, 1, NULL);
 	printf("Task creation code: %d\r\n", rc);
-	gpio_toggle(GPIOB, GPIO0);
-	vTaskStartScheduler();
-	gpio_toggle(GPIOB, GPIO0);
 	
+	uint32_t heapSize = xPortGetFreeHeapSize();
+	printf("Heap size: %d\r\n", heapSize);
 
-	/* add your own code */
-	uint32_t rev = 0xaabbccdd;
-	rev = rev_bytes(rev);
-	return my_func(rev);
+	vTaskStartScheduler();
+	printf("vTaskStartScheduler returned");
+	return 0;
 }
