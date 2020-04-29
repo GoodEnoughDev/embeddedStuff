@@ -101,7 +101,7 @@ int main(void)
 
 void usart3_isr(void)
 {
-		static uint8_t data = 'A';
+	static int index = 0;
 
 	/* Check if we were called because of RXNE. */
 	if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
@@ -111,7 +111,13 @@ void usart3_isr(void)
 		gpio_toggle(GPIOB, GPIO0);
 
 		/* Retrieve the data from the peripheral. */
-		data = usart_recv(USART3);
-		printf("%d\r\n", data);
+		char character = usart_recv(USART3);
+		command_buffer[index++] = character;
+		if(character == '\n')
+		{
+			index = 0;
+		xQueueSendToBackFromISR(command_queue, &command_buffer, pdFALSE);
+		}
+
 	}
 }
