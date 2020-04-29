@@ -116,7 +116,7 @@ void usart3_isr(void)
 		if(character == '\n')
 		{
 			index = 0;
-		xQueueSendToBackFromISR(command_queue, &command_buffer, pdFALSE);
+			xQueueSendToBackFromISR(command_queue, &command_buffer, pdFALSE);
 		}
 
 	}
