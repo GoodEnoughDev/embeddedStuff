@@ -14,6 +14,7 @@
 #define COMMAND_QUEUE_LEN 142
 
 xQueueHandle command_queue;
+xSemaphoreHandle print_semaphore;
 
 void testTask(void);
 void heap_monitor_task(void);
@@ -68,18 +69,22 @@ static void gpio_setup(void)
 
 void testTask(void)
 {
+	xSemaphoreTake(print_semaphore, portMAX_DELAY);
 	printf("Starting testTask");
+	xSemaphoreGive(print_semaphore);
 	const TickType_t delay = pdMS_TO_TICKS(25);
 	while(1)
 	{
-			//gpio_toggle(GPIOB, GPIO0);
+			gpio_toggle(GPIOB, GPIO0);
 			vTaskDelay(delay);
 	}
 }
 
 void heap_monitor_task(void)
 {
+	xSemaphoreTake(print_semaphore, portMAX_DELAY);
     printf("Started heap monitor task");
+	xSemaphoreGive(print_semaphore);
     uint32_t current_heap_size;
     const TickType_t delay = pdMS_TO_TICKS(500);
 
@@ -98,15 +103,16 @@ void heap_monitor_task(void)
 int main(void) 
 {
 	uint32_t rc = 0;
+	print_semaphore = xSemaphoreCreateMutex(void);
 	clock_setup();
 	gpio_setup();
 	usart_setup();
 	printf("Hardware setup complete\r\n");
 
-	rc = xTaskCreate(heap_monitor_task, "heap_monitor_task", 100, NULL, 1, NULL);
+	rc = xTaskCreate(heap_monitor_task, "heap_monitor_task", 100, NULL,configMAX_PRIORITIES-1, NULL);
 	printf("Task creation code: %d\r\n", rc);
 
-	rc = xTaskCreate(testTask, "testTask", 100, NULL, 1, NULL);
+	rc = xTaskCreate(testTask, "testTask", 100, NULL, configMAX_PRIORITIES-1, NULL);
 	printf("Task creation code: %d\r\n", rc);
 
 	// Create command queue
