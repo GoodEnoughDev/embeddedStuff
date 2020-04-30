@@ -11,9 +11,8 @@
 
 
 #define COMMAND_BUFFER_LEN 100
-#define COMMAND_QUEUE_LEN l42
+#define COMMAND_QUEUE_LEN 142
 
-char command_buffer[COMMAND_BUFFER_LEN];
 xQueueHandle command_queue;
 
 void testTask(void);
@@ -82,12 +81,12 @@ void heap_monitor_task(void)
 {
     printf("Started heap monitor task");
     uint32_t current_heap_size;
-    const TickType_t delay = pdMS_TO_TICKS(100);
+    const TickType_t delay = pdMS_TO_TICKS(500);
 
     while(1)
     {
         current_heap_size = xPortGetFreeHeapSize();
-        if(current_heap_size > configTOTAL_HEAP_SIZE)
+        if(current_heap_size > (configTOTAL_HEAP_SIZE * 0.9))
         {
             printf("Current heap size: %d near max: %d", current_heap_size, configTOTAL_HEAP_SIZE);
         }
@@ -130,7 +129,7 @@ void usart3_isr(void)
 
 		/* Retrieve the data from the peripheral. */
 		char character = usart_recv(USART3);
-		xQueueSendToBackFromISR(command_queue, &command_buffer, pdFALSE);
+		xQueueSendToBackFromISR(command_queue, &character, pdFALSE);
 
 	}
 }
