@@ -11,7 +11,7 @@
 
 
 #define COMMAND_BUFFER_LEN 100
-#define COMMAND_QUEUE_LEN 30
+#define COMMAND_QUEUE_LEN l42
 
 char command_buffer[COMMAND_BUFFER_LEN];
 xQueueHandle command_queue;
@@ -87,13 +87,13 @@ void heap_monitor_task(void)
     while(1)
     {
         current_heap_size = xPortGetFreeHeapSize();
-        if(current_heap_size > configMAX_HEAP_SIZE)
+        if(current_heap_size > configTOTAL_HEAP_SIZE)
         {
-            printf("Current heap size: %d near max: %d", current_heap_size, configMAX_HEAP_SIZE)
+            printf("Current heap size: %d near max: %d", current_heap_size, configTOTAL_HEAP_SIZE);
         }
 
         vTaskDelay(delay);
-    {
+	}
 }
 
 int main(void) 
@@ -121,23 +121,16 @@ int main(void)
 
 void usart3_isr(void)
 {
-	static int index = 0;
-
 	/* Check if we were called because of RXNE. */
 	if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
-	    ((USART_SR(USART3) & USART_SR_RXNE) != 0)) {
-
+	    ((USART_SR(USART3) & USART_SR_RXNE) != 0)) 
+	{
 		/* Indicate that we got data. */
 		gpio_toggle(GPIOB, GPIO0);
 
 		/* Retrieve the data from the peripheral. */
 		char character = usart_recv(USART3);
-		command_buffer[index++] = character;
-		if(character == '\n')
-		{
-			index = 0;
-			xQueueSendToBackFromISR(command_queue, &command_buffer, pdFALSE);
-		}
+		xQueueSendToBackFromISR(command_queue, &command_buffer, pdFALSE);
 
 	}
 }
