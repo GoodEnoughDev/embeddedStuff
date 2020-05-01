@@ -8,8 +8,8 @@
 #include "queue.h"
 #include "semphr.h"
 
-#define COMMAND_QUEUE_LEN 20
-#define COMMAND_BUILDER_QUEUE_LEN 20
+#define COMMAND_QUEUE_LEN 50
+#define COMMAND_BUILDER_BUFFER_LEN 50
 #define CHARACTER_QUEUE_LEN 50
 
 // Queues
@@ -20,8 +20,15 @@ xQueueHandle command_queue;
 // Semaphores
 xSemaphoreHandle USART_semaphore;
 
+// Command structure
+//typedef struct
+//{
+
+//}
+
 void testTask(void);
 void heap_monitor_task(void);
+void command_builder_task(void);
 void command_parser_task(void);
 
 
@@ -94,9 +101,9 @@ void heap_monitor_task(void)
 
 void command_builder_task(void)
 {
-    printf("Started command parser task\r\n");
+    printf("Started command builder task\r\n");
 	char character;
-	char command_buffer[COMMAND_BUILDER_QUEUE_LEN];
+	char command_buffer[COMMAND_BUILDER_BUFFER_LEN];
 	int index = 0;
 	const TickType_t delay = pdMS_TO_TICKS(25);
 
@@ -107,19 +114,33 @@ void command_builder_task(void)
 		{
 			if(character == '\n' || character == '\r')
 			{
+				xQueueSendToBack(command_queue, command_buffer, portMAX_DELAY);
 				for(int i = 0; i <= index; i++)
 				{
-					_putchar(command_buffer[i]);
 					command_buffer[i] = NULL;
-					//vTaskDelay(delay);
 				}
 				index = 0;
-				printf("\r\n");
+			    gpio_toggle(GPIOB, GPIO0);
 			}
-			command_buffer[index] = character;
-			gpio_toggle(GPIOB, GPIO0);
-			index++;
+			else
+			{
+				command_buffer[index] = character;
+				index++;
+			}
 		}
+	}
+}
+
+void command_parser_task(void)
+{
+    printf("Started command parser task\r\n");
+	char* current_command[COMMAND_BUILDER_BUFFER_LEN];
+    const TickType_t delay = pdMS_TO_TICKS(5000);
+	
+	while(1)
+	{
+		xQueueReceive(command_queue, current_command, portMAX_DELAY);
+		printf(current_command);
 	}
 }
 
@@ -133,12 +154,12 @@ int main(void)
 	printf("Hardware initialized\r\n");
 
 	character_queue = xQueueCreate(CHARACTER_QUEUE_LEN, sizeof(char));	
-	command_builder_queue = xQueueCreate(COMMAND_BUILDER_QUEUE_LEN, sizeof(char));	
+	command_queue = xQueueCreate(COMMAND_QUEUE_LEN, sizeof(char) * COMMAND_BUILDER_BUFFER_LEN + 1);	
 
 	// Create tasks
 	xTaskCreate(heap_monitor_task, "heap_monitor_task", 100, NULL,configMAX_PRIORITIES-1, NULL);
 	xTaskCreate(command_builder_task, "command_builder_task", 200, NULL, configMAX_PRIORITIES-1, NULL);
-	gpio_toggle(GPIOB, GPIO0);
+	xTaskCreate(command_parser_task, "command_parser_task", 200, NULL, configMAX_PRIORITIES-1, NULL);
 
 	vTaskStartScheduler();
 	printf("vTaskStartScheduler returned");
