@@ -1,5 +1,3 @@
-#include "api.h"
-#include "api-asm.h"
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/usart.h>
@@ -11,17 +9,27 @@
 #include "semphr.h"
 
 #define COMMAND_QUEUE_LEN 20
-#define COMMAND_BUFFER_LEN 50
+#define COMMAND_BUILDER_QUEUE_LEN 20
+#define CHARACTER_QUEUE_LEN 50
 
+// Queues
+xQueueHandle command_builder_queue;
+xQueueHandle character_queue;
 xQueueHandle command_queue;
-xSemaphoreHandle print_semaphore;
+
+// Semaphores
+xSemaphoreHandle USART_semaphore;
 
 void testTask(void);
 void heap_monitor_task(void);
+void command_parser_task(void);
+
 
 void _putchar(char character)
 {
+	xSemaphoreTake(USART_semaphore, portMAX_DELAY);
 	usart_send_blocking(USART3, character);
+	xSemaphoreGive(USART_semaphore);
 }
 
 static void clock_setup(void)
@@ -49,9 +57,8 @@ static void usart_setup(void)
 	usart_set_mode(USART3, USART_MODE_TX_RX);
 	usart_set_parity(USART3, USART_PARITY_NONE);
 	usart_set_flow_control(USART3, USART_FLOWCONTROL_NONE);
-	usart_enable_rx_interrupt(USART3);
 	usart_enable(USART3);
-	printf("\r\n");
+	usart_enable_rx_interrupt(USART3);
 }
 
 static void gpio_setup(void)
@@ -67,23 +74,9 @@ static void gpio_setup(void)
 	gpio_set_af(GPIOD, GPIO_AF7, GPIO9);
 }
 
-void testTask(void)
-{
-	xSemaphoreTake(print_semaphore, portMAX_DELAY);
-	printf("Starting testTask\r\n");
-	xSemaphoreGive(print_semaphore);
-	const TickType_t delay = pdMS_TO_TICKS(25);
-	while(1)
-	{
-			vTaskDelay(delay);
-	}
-}
-
 void heap_monitor_task(void)
 {
-	xSemaphoreTake(print_semaphore, portMAX_DELAY);
     printf("Started heap monitor task\r\n");
-	xSemaphoreGive(print_semaphore);
     uint32_t current_heap_size;
     const TickType_t delay = pdMS_TO_TICKS(500);
 
@@ -99,27 +92,25 @@ void heap_monitor_task(void)
 	}
 }
 
-void command_parser_task(void)
+void command_builder_task(void)
 {
-	xSemaphoreTake(print_semaphore, portMAX_DELAY);
     printf("Started command parser task\r\n");
-	xSemaphoreGive(print_semaphore);
 	char character;
-	char command_buffer[COMMAND_BUFFER_LEN];
+	char command_buffer[COMMAND_BUILDER_QUEUE_LEN];
 	int index = 0;
 	const TickType_t delay = pdMS_TO_TICKS(25);
 
 	while(1)
 	{
-		xQueueReceive(command_queue, &character, portMAX_DELAY);
+		xQueueReceive(character_queue, &character, portMAX_DELAY);
 		if(character != NULL)
 		{
 			if(character == '\n' || character == '\r')
 			{
 				for(int i = 0; i <= index; i++)
 				{
-					usart_send_blocking(USART3, command_buffer[i]);
-					command_buffer[i] = 0;
+					_putchar(command_buffer[i]);
+					command_buffer[i] = NULL;
 					//vTaskDelay(delay);
 				}
 				index = 0;
@@ -134,46 +125,37 @@ void command_parser_task(void)
 
 int main(void) 
 {
-	uint32_t rc = 0;
-	print_semaphore = xSemaphoreCreateMutex();
+	USART_semaphore = xSemaphoreCreateMutex();
+
 	clock_setup();
 	gpio_setup();
 	usart_setup();
-	printf("Hardware setup complete\r\n");
+	printf("Hardware initialized\r\n");
 
-	rc = xTaskCreate(heap_monitor_task, "heap_monitor_task", 100, NULL,configMAX_PRIORITIES-1, NULL);
-	printf("Task creation code: %d\r\n", rc);
+	character_queue = xQueueCreate(CHARACTER_QUEUE_LEN, sizeof(char));	
+	command_builder_queue = xQueueCreate(COMMAND_BUILDER_QUEUE_LEN, sizeof(char));	
 
-	rc = xTaskCreate(testTask, "testTask", 100, NULL, configMAX_PRIORITIES-1, NULL);
-	printf("Task creation code: %d\r\n", rc);
-
-	// Create command queue
-	command_queue = xQueueCreate(COMMAND_QUEUE_LEN, sizeof(char));	
-	printf("Command queue created with handle: %d\r\n");
-
-	// Create command parser task
-	xTaskCreate(command_parser_task, "command_parser_task", 200, NULL, configMAX_PRIORITIES-1, NULL);
+	// Create tasks
+	xTaskCreate(heap_monitor_task, "heap_monitor_task", 100, NULL,configMAX_PRIORITIES-1, NULL);
+	xTaskCreate(command_builder_task, "command_builder_task", 200, NULL, configMAX_PRIORITIES-1, NULL);
+	gpio_toggle(GPIOB, GPIO0);
 
 	vTaskStartScheduler();
 	printf("vTaskStartScheduler returned");
+	
+	
 	return 0;
 }
 
 void usart3_isr(void)
 {
-	BaseType_t xHighPriorityTaskWoken;
-	xHighPriorityTaskWoken = pdFALSE;
 	static char character;
-	/* Check if we were called because of RXNE. */
+	gpio_toggle(GPIOB, GPIO0);
+
 	if (((USART_CR1(USART3) & USART_CR1_RXNEIE) != 0) &&
 	    ((USART_SR(USART3) & USART_SR_RXNE) != 0)) 
 	{
-		/* Indicate that we got data. */
-		//gpio_toggle(GPIOB, GPIO0);
-
-		/* Retrieve the data from the peripheral. */
 		character = usart_recv(USART3);
-		
-		xQueueSendToBack(command_queue, &character, xHighPriorityTaskWoken);
+		xQueueSendToBackFromISR(character_queue, &character, pdFALSE);
 	}
 }
