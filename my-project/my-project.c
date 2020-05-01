@@ -141,6 +141,10 @@ void command_parser_task(void)
 	{
 		xQueueReceive(command_queue, current_command, portMAX_DELAY);
 		printf(current_command);
+		if(!strcmp(current_command, "?"))
+		{
+			printf("Help text......\r\n");
+		}
 	}
 }
 
