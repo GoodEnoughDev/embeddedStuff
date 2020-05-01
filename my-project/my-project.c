@@ -56,8 +56,9 @@ static void usart_setup(void)
 {
 	// Setup interrupts
 	nvic_enable_irq(NVIC_USART3_IRQ);
+	nvic_enable_irq(NVIC_USART2_IRQ);
 
-	// Setup USART
+	// Setup USART3
 	usart_set_baudrate(USART3, 115200);
 	usart_set_databits(USART3, 8);
 	usart_set_stopbits(USART3, USART_STOPBITS_1);
@@ -66,6 +67,16 @@ static void usart_setup(void)
 	usart_set_flow_control(USART3, USART_FLOWCONTROL_NONE);
 	usart_enable(USART3);
 	usart_enable_rx_interrupt(USART3);
+	
+	// Setup USART2
+	usart_set_baudrate(USART2, 115200);
+	usart_set_databits(USART2, 8);
+	usart_set_stopbits(USART2, USART_STOPBITS_1);
+	usart_set_mode(USART2, USART_MODE_TX_RX);
+	usart_set_parity(USART2, USART_PARITY_NONE);
+	usart_set_flow_control(USART2, USART_FLOWCONTROL_CTS);
+	usart_enable(USART2);
+	usart_enable_rx_interrupt(USART2);
 }
 
 static void gpio_setup(void)
@@ -73,12 +84,21 @@ static void gpio_setup(void)
 	// Setup LED GPIO
 	gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
 
-	// Setup USART pin modes
+	// Setup USART3 pin modes
 	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8);
 	gpio_mode_setup(GPIOD, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO9);
 	gpio_set_output_options(GPIOD, GPIO_OTYPE_OD, GPIO_OSPEED_25MHZ, GPIO9);
 	gpio_set_af(GPIOD, GPIO_AF7, GPIO8);
 	gpio_set_af(GPIOD, GPIO_AF7, GPIO9);
+
+	// Setup USART2 pin modes
+	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO0);
+	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2);
+	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO3);
+	gpio_set_output_options(GPIOA, GPIO_OTYPE_OD, GPIO_OSPEED_25MHZ, GPIO2);
+	gpio_set_af(GPIOA, GPIO_AF7, GPIO0);
+	gpio_set_af(GPIOA, GPIO_AF7, GPIO2);
+	gpio_set_af(GPIOA, GPIO_AF7, GPIO3);
 }
 
 void heap_monitor_task(void)
@@ -145,6 +165,16 @@ void command_parser_task(void)
 		{
 			printf("Help text......\r\n");
 		}
+	}
+}
+
+void usart2_echo_task(void)
+{
+	char character;
+	while(1)
+	{
+		character = usart_recv(USART2);
+		usart_send_blocking(USART2, character);
 	}
 }
 
